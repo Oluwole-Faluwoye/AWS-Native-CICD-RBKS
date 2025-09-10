@@ -1,0 +1,6 @@
+COde Deploy: You can use Code Deploy on-prem as well.
+
+
+Linear Deployment : Focuses on gradually increasing the traffic and also the infrastructure that supports the traffic.
+
+In-place deployment:

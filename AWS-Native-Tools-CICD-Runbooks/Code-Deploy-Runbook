@@ -1,0 +1,216 @@
+--------------------------------------------------------------------------
+CodeDeploy WorkFlow
+
+Application - Deployment Group - Deployment 
+
+-------------------------------------------------------------------------
+
+We are using the Build we did earlier 
+
+Integrating it with code deploy
+
+select the code build project and select actions
+
+click  edit
+
+in the App Spec we specified that the output should be zipped and kept in the folder "webapp"
+
+under path type "webapp"
+
+Artifact packaging select zip
+
+click update project
+
+Now we need to create the Code Deploy Instances 
+
+Go to Ec2 and lauch instances 
+
+Name : Prod-Env
+
+select Add additional tags 
+
+Key : Env 
+
+Value : Prod 
+
+Instance Type : T2. micro 
+
+AMI : Amazon linux 2
+
+select your keypair 
+
+SG: 
+Create a new SG
+NAME : dev-stage-prod sg
+Port 8080
+
+IAM role : EC2 admin role    (If you do not have EC2 admin role,  create it, This will allow the Code Deply agent to communicate back with Code Deploy)
+
+paste the userdata below in the userdata section
+
+------------------------------------------------------------------------------
+
+#!/bin/bash
+
+sudo yum update
+
+sudo yum install ruby -y
+
+sudo yum install wget -y
+
+cd /home/ec2-user
+
+wget https://aws-codedeploy-us-west-2.s3.us-west-2.amazonaws.com/latest/install
+
+chmod +x ./install
+
+sudo ./install auto
+
+sudo service codedeploy-agent status
+
+----------------------------------------------------------------------------------
+
+Increase the number of instances you want to launch to 2 or more depending on the nmber of instances you want to deploy tolaunch the instance.
+
+------------------------------------------------------------------------------------------
+
+Now go back to code deploy 
+
+Click on Applications
+
+create application
+
+Name : Java-WebApp-CD-Application        (or whatever your desired application name is )
+
+Compute platform : EC2/On-Prem
+
+Select Create Deployment Group   ( These will be the )
+
+Name : Java-WebApp-CD-Application-DG
+
+For this Deployment, The Deployment will need a role to be able to execute the job 
+
+We will need to create a Role that will allow this 
+
+Go to IAM 
+
+Create Role 
+
+Trusted Entity Type : AWS service
+
+use case : Code Deploy
+
+click next 
+
+Roe name : AWS-CodeDeploy-admin-role-new
+
+create role 
+
+click on view role 
+
+select Add Permissions 
+
+Select Attach Policies 
+
+Add "admin access" policy
+
+------------------------------------------------------------------------
+
+Go back to CodeDeploy 
+
+select the service role you just created 
+
+for Deployment Type for Code Deploy ( You have two options In-place or Blue/Green Deployment)
+
+For this project select In-Place  ( This replaces the app version with the newer version without  changing the infrastructure)
+
+Environment Configuration 
+
+select Amazon Ec2 instances       ( If we are going for Blue/Green we will need a load balancer to cut the traffic from A to B)
+
+
+Tag ( You'll be prompted to add a tags to use to filter the instances you want to target)
+
+Key Env 
+
+Value : prod    ( This is telling CodeDeploy which instances to target)
+
+Matching Instances  ( It will tell you how many instances that match the tag you just inputed)
+
+- The particular version of Code deploy agent you installed in the instances may be deprecated anytime so you should schedule an update here in the code deploy UI
+
+Agent configuration with AWS Systems Manager
+
+under Install AWS CodeDeploy Agent
+
+select  "Now and schedule updates"
+
+Basic Scheduler - 14 days ( when you want the code deploy agent to be updated )
+
+Deployment Settings    ( select How you want the deployment to take place : Depoy One at once or  Half at once or all at once)
+
+Select all at once since we are only testing
+
+Load Balancer  (Disable since we are not using blue/green)
+
+Create Deployment
+
+---------------------------------------------------------------------------------
+
+(You can call Code Deploy plug in from Jenkins using PLUGINS)
+
+You can use Jenkins to call a CodeDeployment to Call a Deployment Group and deploy to your instances
+
+How do you create aN INSTANCE AND Automatically configure the instance to a specific configuration ( Harden) without a user data
+
+Create an autmation that uses SSM Rund commannd Document that gets called when you create any EC2 accross any region, which uses a global cloud trail using Control Tower ( Although you can limit it to a region)
+
+When you create an instance, it creates a cloud trail  event 
+
+You can tie the log   that gets created when you create an instance, to create a "cloudwatch" event trigger  to call the automation document in SSM and automatically run the document in the EC2 instance you just created.
+
+You can also configure Jenkins to run SSM document into all the EC2 in your fleet   (SSM instead of Ansible   - The documents are there and consistent)
+
+-----------------------------------------------------------------------------------------------------------------------------------
+
+CodeDeploy WorkFlow
+
+Application - Deployment Group - Deployment 
+
+--------------------------------------------------------------
+
+Go to your Repo 
+
+select the Buildspec.yml and click on thepen on the right hand to edit
+
+in line 26  edit like this :
+
+  files:
+    - '**/*'         (Previously we had 'target/*war' which mean it would only copy the war file and the target directory initially but now this ('**/*') ensure it will copy the entire source code and the Build artifacts that has just been created )
+
+Since we are using Code Deploy to deploy we edited the files to be copied because if we left it as 'target/*war' CodeDeploy will only copy the war file  but we want all the entire source code including the scripts that have allow for In-Place deployment to take place, will not be copied. 
+
+---------------------------------------------------------
+For all In-Place Deployment  it follows these 3 steps 
+
+Stops the instance 
+
+deploy the new version 
+
+restart the instance 
+
+Verify the health check 
+--------------------------------------------------------
+
+Select AppSpec.yml 
+
+Go to line 4 and update to   (- source: target/webapp.war)      ( Since the container will be destroyed after the build, and we are picking artifact to be deployed from S3. we exported the entire source code because of the scripts that we want to use for the in-place deployments into S3 i.e scripts ( To stop, Deploy artifact and dependencies, start the new version of app and health check ).   Although we edited our Build spec to copy all the files including the source code and artifact that was created during the build with ( '**/*' ) into S3, we are telling Code deploy here to only deploy the war file we have inside the target directory into our instances
+
+-----------------------------------------------------------------
+
+We are not going to create a Deployment because we want to automate it and not run the deployment manually. If we are running the deployment manually we would create a deployment 
+
+
+
+
+For the Automation, go to the Code Pipeline Runbook

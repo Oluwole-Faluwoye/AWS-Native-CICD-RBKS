@@ -1,0 +1,61 @@
+Click on Create Pipeline 
+
+Category    ( This is asking what type of pipeline you want to create)
+
+Select Build custom pipeline
+
+Select Next
+
+Name : Java-WebApp-Project-Pipeline
+
+Execution Mode : Queued    (This pauses a second job before the first job is done.  Say another developer pushes another change and you don't want to run simultaneously so the first one gets completed before the second and so on.  used mostly for app deployment and infrastructure..    For config jobs you can use parallel. )
+
+serice role : New Service role    ( Code Pipeline needs access to all the jobs and services that are in the pipeline. This will populate the name itself  )
+
+select next 
+
+Source  : GitHub (Via OAuth app)     or  (via GitHub App :  This is the latest recommended method but youll need to first create a connection first). 
+
+Repository : select the repository your code is in 
+
+Branch : main
+
+select next 
+
+Build Provider : other build providers 
+
+select  from the drop down  "CodeBuild" 
+
+Project name : Select the Build Job you created earlier 
+
+Build Type : Single build 
+
+Input artifact : Source Artifact
+
+click next 
+
+----------------------------------------------------
+Testing Stage   ( Depending on the testing strategy you want to use  select either codebuild if you want to integrate a specific tool for testing or any other testing strategy )
+
+For this project we are skipping the test stage
+
+---------------------------------------------------------
+
+Deploy 
+
+Select Code Deploy
+
+Input Artifact   : BuildArtifact     ( The Build Artifact will be the artifact we want to deploy here)
+
+Application name : Select the Appication you created
+
+Deployment group : Select the deployment group you created earlier     ( Note you can create more than one deployments for one application.   eg one for stage, one for prod etc)
+
+Create Pipeline
+
+---------------------------------------------------------
+
+
+If you go to CodeDeploy and select Events
+
+You will see all the steps Codedeploy does to deploy the application
